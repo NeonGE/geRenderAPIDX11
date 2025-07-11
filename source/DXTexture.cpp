@@ -30,10 +30,15 @@ namespace geEngineSDK {
   void
   DXTexture::release() {
     safeRelease(m_pTexture);
-    safeRelease(m_pSRV);
     safeRelease(m_pDSV);
     safeRelease(m_pRO_DSV);
 
+    if (m_desc.bindFlags & D3D11_BIND_SHADER_RESOURCE) {
+      for (auto& pSRV : m_ppSRV) {
+        safeRelease(pSRV);
+      }
+      m_ppSRV.clear();
+    }
     if (m_desc.bindFlags & D3D11_BIND_RENDER_TARGET) {
       for (auto& pRTV : m_ppRTV) {
         safeRelease(pRTV);

@@ -26,7 +26,14 @@ namespace geEngineSDK {
   {
    public:
     DXInputLayout() = default;
-    virtual ~DXInputLayout() = default;
+    virtual ~DXInputLayout() {
+      release();
+    }
+
+    void
+    release() override {
+      safeRelease(m_inputLayout);
+    }
 
    protected:
     friend class DX11RenderAPI;

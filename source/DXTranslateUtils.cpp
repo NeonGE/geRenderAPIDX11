@@ -913,18 +913,55 @@ namespace geEngineSDK {
     }
 
     VERTEX_ELEMENT_TYPE::E
-    getInputType(D3D_REGISTER_COMPONENT_TYPE type) {
-      switch (type)
-      {
-      case D3D_REGISTER_COMPONENT_FLOAT32:
-        return VERTEX_ELEMENT_TYPE::FLOAT4;
-      case D3D_REGISTER_COMPONENT_SINT32:
-        return VERTEX_ELEMENT_TYPE::INT4;
-      case D3D_REGISTER_COMPONENT_UINT32:
-        return VERTEX_ELEMENT_TYPE::UINT4;
-      default:
-        return VERTEX_ELEMENT_TYPE::FLOAT4;
+    getInputType(D3D_REGISTER_COMPONENT_TYPE type, uint8 mask) {
+      VERTEX_ELEMENT_TYPE::E ret = VERTEX_ELEMENT_TYPE::UNKNOWN;
+
+      if (mask == 1) {
+        if (type == D3D_REGISTER_COMPONENT_UINT32) {
+          ret = VERTEX_ELEMENT_TYPE::UINT1;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_SINT32) {
+          ret = VERTEX_ELEMENT_TYPE::INT1;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_FLOAT32) {
+          ret = VERTEX_ELEMENT_TYPE::FLOAT1;
+        }
       }
+      else if (mask <= 3) {
+        if (type == D3D_REGISTER_COMPONENT_UINT32) {
+          ret = VERTEX_ELEMENT_TYPE::UINT2;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_SINT32) {
+          ret = VERTEX_ELEMENT_TYPE::INT2;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_FLOAT32) {
+          ret = VERTEX_ELEMENT_TYPE::FLOAT2;
+        }
+      }
+      else if (mask <= 7) {
+        if (type == D3D_REGISTER_COMPONENT_UINT32) {
+          ret = VERTEX_ELEMENT_TYPE::UINT3;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_SINT32) {
+          ret = VERTEX_ELEMENT_TYPE::INT3;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_FLOAT32) {
+          ret = VERTEX_ELEMENT_TYPE::FLOAT3;
+        }
+      }
+      else if (mask <= 15) {
+        if (type == D3D_REGISTER_COMPONENT_UINT32) {
+          ret = VERTEX_ELEMENT_TYPE::UINT4;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_SINT32) {
+          ret = VERTEX_ELEMENT_TYPE::INT4;
+        }
+        else if (type == D3D_REGISTER_COMPONENT_FLOAT32) {
+          ret = VERTEX_ELEMENT_TYPE::FLOAT4;
+        }
+      }
+
+      return ret;
     }
 
   } // namespace TranslateUtils

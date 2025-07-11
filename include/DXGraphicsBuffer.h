@@ -24,18 +24,57 @@
 namespace geEngineSDK
 {
 
-  class DXGraphicsBuffer : public GraphicsBuffer
+  class DXVertexBuffer : public VertexBuffer
   {
    public:
-    DXGraphicsBuffer() = default;
-    virtual ~DXGraphicsBuffer() = default;
-    
-    virtual void*
-    _getGraphicsBuffer() const = 0;
+    DXVertexBuffer() = default;
+    virtual ~DXVertexBuffer() = default;
+
+    bool
+    load(const Path& filePath) override {
+      GE_UNREFERENCED_PARAMETER(filePath);
+      return false; // Vertex buffers are usually created in code, not loaded from files
+    }
+
+    void
+    unload() override
+    {}
+
+    bool
+    isLoaded() const override {
+      return m_pBuffer != nullptr;
+    }
+
+    const String&
+    getName() const override {
+      static String emptyName;
+      return emptyName;
+    }
+
+    SIZE_T
+    getMemoryUsage() const override {
+      return m_Desc.ByteWidth; // Memory usage is the size of the buffer
+    }
+
+    void*
+    _getGraphicsResource() const override {
+      return m_pBuffer;
+    }
+
+    void*
+    _getGraphicsBuffer() const override {
+      return m_pBuffer;
+    }
+
+    const D3D11_BUFFER_DESC&
+    getDesc() const {
+      return m_Desc;
+    }
 
    protected:
-    friend class RenderAPI;
+    friend class DX11RenderAPI;
     ID3D11Buffer* m_pBuffer = nullptr;
     D3D11_BUFFER_DESC m_Desc{};
   };
+
 } // namespace geEngineSDK

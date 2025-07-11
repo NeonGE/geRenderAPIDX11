@@ -468,6 +468,11 @@ namespace geEngineSDK {
 #if !USING(GE_DEBUG_MODE)
     return;
 #endif
+    if (!m_pDebug) {
+      return;
+    }
+    //Report live objects
+    m_pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
   }
   
   SPtr<Texture>
@@ -623,33 +628,39 @@ namespace geEngineSDK {
     }
 
     if (bindFlags & D3D11_BIND_SHADER_RESOURCE) {
+      pTexture->m_ppSRV.resize(mipLevels);
+
       D3D11_SHADER_RESOURCE_VIEW_DESC sDesc = CD3D11_SHADER_RESOURCE_VIEW_DESC();
       sDesc.Format = srv_format;
+      uint32* pMostDetailedMip = nullptr;
 
       if (isCubeMap) {
         if (arraySize > 1) {
           sDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBEARRAY;
           sDesc.TextureCubeArray.First2DArrayFace = 0;
           sDesc.TextureCubeArray.NumCubes = arraySize;
-          sDesc.TextureCubeArray.MostDetailedMip = 0;
-          sDesc.TextureCubeArray.MipLevels = mipLevels == 1 ? 1 : -1;
+          sDesc.TextureCubeArray.MipLevels = mipLevels;
+          pMostDetailedMip = &sDesc.TextureCubeArray.MostDetailedMip;
         }
         else {
           sDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-          sDesc.TextureCube.MostDetailedMip = 0;
-          sDesc.TextureCube.MipLevels = mipLevels == 1 ? 1 : -1;
+          sDesc.TextureCube.MipLevels = mipLevels;
+          pMostDetailedMip = &sDesc.TextureCube.MostDetailedMip;
         }
       }
       else {
         sDesc.ViewDimension = (sampleCount > 1 || isMSAA) ?
           D3D11_SRV_DIMENSION_TEXTURE2DMS : D3D11_SRV_DIMENSION_TEXTURE2D;
-        sDesc.Texture2D.MostDetailedMip = 0;
-        sDesc.Texture2D.MipLevels = mipLevels == 1 ? 1 : -1;
+        sDesc.Texture2D.MipLevels = mipLevels;
+        pMostDetailedMip = &sDesc.Texture2D.MostDetailedMip;
       }
 
-      throwIfFailed(m_pDevice->CreateShaderResourceView(pTexture->m_pTexture,
-        &sDesc,
-        &pTexture->m_pSRV));
+      for (uint32 i = 0; i < mipLevels; ++i) {
+        *pMostDetailedMip = i;
+        throwIfFailed(m_pDevice->CreateShaderResourceView(pTexture->m_pTexture,
+                                                          &sDesc,
+                                                          &pTexture->m_ppSRV[i]));
+      }
     }
 
     if (autogenMipmaps) {
@@ -768,6 +779,7 @@ namespace geEngineSDK {
     vertexElements.reserve(shaderDesc.InputParameters);
 
     //Loop through all the input parameters and create the input element descriptors
+    uint32 offset = 0;
     for (uint32 i = 0; i < shaderDesc.InputParameters; ++i) {
       D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
       throwIfFailed(pReflector->GetInputParameterDesc(i, &paramDesc));
@@ -776,12 +788,15 @@ namespace geEngineSDK {
       if (StringUtil::startsWith(String(paramDesc.SemanticName), "sv_")) {
         continue;
       }
-      
+
       vertexElements.emplace_back(paramDesc.Stream,
-                                  paramDesc.Register,
-                                  TranslateUtils::getInputType(paramDesc.ComponentType),
+                                  offset,
+                                  TranslateUtils::getInputType(paramDesc.ComponentType,
+                                    paramDesc.Mask),
                                   TranslateUtils::get(paramDesc.SemanticName),
                                   paramDesc.SemanticIndex);
+
+      offset += vertexElements.back().getSize();
     }
 
     safeRelease(pReflector);
@@ -1134,7 +1149,7 @@ namespace geEngineSDK {
     auto pObj = pTexture.lock();
     auto pDXObj = reinterpret_cast<DXTexture*>(pObj.get());
 
-    m_pActiveContext->GenerateMips(pDXObj->m_pSRV);
+    m_pActiveContext->GenerateMips(pDXObj->m_ppSRV[0]);
   }
 
   void

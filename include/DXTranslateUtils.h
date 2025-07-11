@@ -73,7 +73,7 @@ namespace geEngineSDK {
      *         register component type.
      */
     VERTEX_ELEMENT_TYPE::E
-    getInputType(D3D_REGISTER_COMPONENT_TYPE type);
+    getInputType(D3D_REGISTER_COMPONENT_TYPE type, uint8 mask);
 
     /**
      * @brief Retrieves the enumeration value corresponding to a given vertex

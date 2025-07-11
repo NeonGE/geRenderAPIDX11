@@ -81,10 +81,11 @@ namespace geEngineSDK {
     friend class DX11RenderAPI;
 
     D3DTexture2D* m_pTexture = nullptr;
-    D3DShaderResourceView* m_pSRV = nullptr;
     D3DDepthStencilView* m_pDSV = nullptr;
     D3DDepthStencilView* m_pRO_DSV = nullptr;
-    Vector<D3DUnorderedAccessView*> m_ppUAV;
+    
+    Vector<D3DShaderResourceView*> m_ppSRV;
     Vector<D3DRenderTargetView*> m_ppRTV;
+    Vector<D3DUnorderedAccessView*> m_ppUAV;
   };
 } // namespace geEngineSDK
