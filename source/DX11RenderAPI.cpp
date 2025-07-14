@@ -18,6 +18,7 @@
 /*****************************************************************************/
 #include "geRenderAPI.h"
 #include "DX11RenderAPI.h"
+#include "DXGraphicsBuffer.h"
 #include "DXTranslateUtils.h"
 
 #include <geGameConfig.h>
@@ -49,7 +50,7 @@ namespace geEngineSDK {
       GE_UNREFERENCED_PARAMETER(pParentData);
 
       Path filePath;
-      if (IncludeType == D3D_INCLUDE_LOCAL || IncludeType == D3D_INCLUDE_SYSTEM) {
+      if (IncludeType & D3D_INCLUDE_LOCAL || IncludeType & D3D_INCLUDE_SYSTEM) {
         //Search for the file in the include paths
         filePath = _findFile(pFileName);
         if (filePath == Path::BLANK) {
@@ -390,7 +391,7 @@ namespace geEngineSDK {
   }
 
   bool
-  DX11RenderAPI::isMSAAFormatSupported(const TEXTURE_FORMAT::E format,
+  DX11RenderAPI::isMSAAFormatSupported(const GRAPHICS_FORMAT::E format,
                                        int32& samplesPerPixel,
                                        int32& sampleQuality) const {
     GE_ASSERT(m_pDevice);
@@ -398,7 +399,7 @@ namespace geEngineSDK {
     SPtr<DXTexture> pBackBuffer = ge_shared_ptr_new<DXTexture>();
 
 #if USING(GE_CPP17_OR_LATER)
-    static UnorderedMap<TEXTURE_FORMAT::E, Optional<pair<int32, int32>>> s_msaaCache;
+    static UnorderedMap<GRAPHICS_FORMAT::E, Optional<pair<int32, int32>>> s_msaaCache;
     auto it = s_msaaCache.find(format);
     if (it != s_msaaCache.end()) {
       if(it->second.has_value()) {
@@ -478,7 +479,7 @@ namespace geEngineSDK {
   SPtr<Texture>
   DX11RenderAPI::createTexture(uint32 width,
                                uint32 height,
-                               TEXTURE_FORMAT::E format,
+                               GRAPHICS_FORMAT::E format,
                                uint32 bindFlags,
                                uint32 mipLevels,
                                RESOURCE_USAGE::E usage,
@@ -697,7 +698,7 @@ namespace geEngineSDK {
       return nullptr;
     }
     
-    auto inputLayout = ge_unique_ptr_new<DXInputLayout>();
+    auto inputLayout = ge_shared_ptr_new<DXInputLayout>();
 
     auto pDesc = descArray.lock();
     auto vs = reinterpret_cast<DXShader*>(pVS.lock().get());
@@ -805,6 +806,196 @@ namespace geEngineSDK {
     auto pVertexDecl = createVertexDeclaration(vertexElements);
     
     return createInputLayout(pVertexDecl, pVS);
+  }
+
+  /*************************************************************************/
+  // Create Buffers
+  /*************************************************************************/
+  void
+  DX11RenderAPI::_createBuffer(uint32 bindFlags,
+                               SIZE_T sizeInBytes,
+                               const void* pInitialData,
+                               const uint32 usage,
+                               const uint32 byteStride,
+                               ID3D11Buffer** outBuffer,
+                               D3D11_BUFFER_DESC& outDesc) const {
+    GE_ASSERT(m_pDevice && outBuffer && sizeInBytes > 0 && bindFlags != 0);
+    
+    ge_zero_out(outDesc);
+    outDesc.Usage = static_cast<D3D11_USAGE>(usage);
+    outDesc.ByteWidth = static_cast<UINT>(sizeInBytes);
+    outDesc.BindFlags = bindFlags;
+    outDesc.CPUAccessFlags = usage == D3D11_USAGE_DYNAMIC ? D3D11_CPU_ACCESS_WRITE : 0;
+    outDesc.MiscFlags = 0;
+    outDesc.StructureByteStride = byteStride;
+
+    D3D11_SUBRESOURCE_DATA InitData;
+    InitData.pSysMem = pInitialData;
+    InitData.SysMemPitch = 0;
+    InitData.SysMemSlicePitch = 0;
+
+    throwIfFailed(m_pDevice->CreateBuffer(&outDesc,
+                                          pInitialData ? &InitData : nullptr,
+                                          outBuffer));
+  }
+
+  SPtr<VertexBuffer>
+  DX11RenderAPI::createVertexBuffer(const SPtr<VertexDeclaration>& pDecl,
+                                    const SIZE_T sizeInBytes,
+                                    const void* pInitialData,
+                                    const uint32 usage) {
+    GE_ASSERT(m_pDevice);
+    auto pVB = ge_shared_ptr_new<DXVertexBuffer>();
+
+    _createBuffer(D3D11_BIND_VERTEX_BUFFER,
+                  sizeInBytes,
+                  pInitialData,
+                  usage,
+                  pDecl->getProperties().getVertexSize(0),
+                  &pVB->m_pBuffer,
+                  pVB->m_Desc);
+
+    pVB->m_pVertexDeclaration = pDecl;
+
+    return pVB;
+  }
+
+  SPtr<IndexBuffer>
+  DX11RenderAPI::createIndexBuffer(const SIZE_T sizeInBytes,
+                                   const void* pInitialData,
+                                   const INDEX_BUFFER_FORMAT::E format,
+                                   const uint32 usage) {
+    GE_ASSERT(m_pDevice);
+    auto pIB = ge_shared_ptr_new<DXIndexBuffer>();
+
+    _createBuffer(D3D11_BIND_INDEX_BUFFER,
+                  sizeInBytes,
+                  pInitialData,
+                  usage,
+                  format == INDEX_BUFFER_FORMAT::R32_UINT ? sizeof(uint32) : sizeof(uint16),
+                  &pIB->m_pBuffer,
+                  pIB->m_Desc);
+
+    if(format == INDEX_BUFFER_FORMAT::R32_UINT) {
+      pIB->m_indexFormat = GRAPHICS_FORMAT::kR32_UINT;
+    }
+    else {
+      pIB->m_indexFormat = GRAPHICS_FORMAT::kR16_UINT;
+    }
+
+    return pIB;
+  }
+
+  SPtr<ConstantBuffer>
+  DX11RenderAPI::createConstantBuffer(const SIZE_T sizeInBytes,
+                                      const void* pInitialData,
+                                      const uint32 usage) {
+    GE_ASSERT(m_pDevice);
+    auto pCB = ge_shared_ptr_new<DXConstantBuffer>();
+
+    _createBuffer(D3D11_BIND_CONSTANT_BUFFER,
+                  sizeInBytes,
+                  pInitialData,
+                  usage,
+                  0, //Constant buffers don't have a byte stride
+                  &pCB->m_pBuffer,
+                  pCB->m_Desc);
+
+    return pCB;
+  }
+
+  SPtr<RasterizerState>
+  DX11RenderAPI::createRasterizerState(const RASTERIZER_DESC& rasterDesc) {
+    GE_ASSERT(m_pDevice);
+
+    auto pRS = ge_shared_ptr_new<DXRasterizerState>();
+
+#if USING(DX_VERSION_11_0)
+    D3D11_RASTERIZER_DESC desc;
+#elif USING(DX_VERSION_11_1) || USING(DX_VERSION_11_2)
+    D3D11_RASTERIZER_DESC1 desc;
+#else
+    D3D11_RASTERIZER_DESC2 desc;
+#endif
+
+    ge_zero_out(desc);  //This is important to avoid uninitialized values
+    memcpy(&desc, &rasterDesc, sizeof(desc));
+
+#if USING(DX_VERSION_11_0)
+    throwIfFailed(m_pDevice->CreateRasterizerState(&desc, &pRS->m_pRasterizerState));
+#elif USING(DX_VERSION_11_1) || USING(DX_VERSION_11_2)
+    throwIfFailed(m_pDevice->CreateRasterizerState1(&desc, &pRS->m_pRasterizerState));
+#else
+    throwIfFailed(m_pDevice->CreateRasterizerState2(&desc, &pRS->m_pRasterizerState));
+#endif
+
+    return pRS;
+  }
+
+  SPtr<DepthStencilState>
+  DX11RenderAPI::createDepthStencilState(const DEPTH_STENCIL_DESC& depthStencilDesc) {
+    GE_ASSERT(m_pDevice);
+
+    auto pDSS = ge_shared_ptr_new<DXDepthStencilState>();
+    D3D11_DEPTH_STENCIL_DESC desc;
+    memcpy(&desc, &depthStencilDesc, sizeof(desc));
+
+    throwIfFailed(m_pDevice->CreateDepthStencilState(&desc, &pDSS->m_pDepthStencilState));
+    return pDSS;
+  }
+
+  SPtr<BlendState>
+  DX11RenderAPI::createBlendState(const BLEND_DESC& blendDesc,
+                                  const Vector4 blendFactors,
+                                  const uint32 sampleMask) {
+    GE_ASSERT(m_pDevice);
+
+    auto pBS = ge_shared_ptr_new<DXBlendState>();
+    
+#if USING(DX_VERSION_11_0)
+    D3D11_BLEND_DESC desc;
+    ge_zero_out(desc);  //This is important to avoid uninitialized values
+
+    //We need to copy the blendDesc manually because it's defined like D3D11_BLEND_DESC1
+    desc.AlphaToCoverageEnable = blendDesc.alphaToCoverageEnable;
+    desc.IndependentBlendEnable = blendDesc.independentBlendEnable;
+    for(uint32 i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i) {
+      auto& rtIn = blendDesc.renderTarget[i];
+      auto& rtOut = desc.RenderTarget[i];
+
+      rtOut.BlendEnable = rtIn.blendEnable;
+      rtOut.SrcBlend = static_cast<D3D11_BLEND>(rtIn.srcBlend);
+      rtOut.DestBlend = static_cast<D3D11_BLEND>(rtIn.destBlend);
+      rtOut.BlendOp = static_cast<D3D11_BLEND_OP>(rtIn.blendOp);
+      rtOut.SrcBlendAlpha = static_cast<D3D11_BLEND>(rtIn.srcBlendAlpha);
+      rtOut.DestBlendAlpha = static_cast<D3D11_BLEND>(rtIn.destBlendAlpha);
+      rtOut.BlendOpAlpha = static_cast<D3D11_BLEND_OP>(rtIn.blendOpAlpha);
+      rtOut.RenderTargetWriteMask = rtIn.renderTargetWriteMask;
+    }
+
+    throwIfFailed(m_pDevice->CreateBlendState(&rtOut, &pBS->m_pBlendState));
+#else
+    D3D11_BLEND_DESC1 desc;
+    memcpy(&desc, &blendDesc, sizeof(desc));
+    throwIfFailed(m_pDevice->CreateBlendState1(&desc, &pBS->m_pBlendState));
+#endif
+    pBS->m_blendFactors = blendFactors;
+    pBS->m_sampleMask = sampleMask;
+
+    return pBS;
+  }
+
+  SPtr<SamplerState>
+  DX11RenderAPI::createSamplerState(const SAMPLER_DESC& samplerDesc) {
+    GE_ASSERT(m_pDevice);
+    auto pSS = ge_shared_ptr_new<DXSamplerState>();
+
+    D3D11_SAMPLER_DESC desc;
+    memcpy(&desc, &samplerDesc, sizeof(desc));
+
+    throwIfFailed(m_pDevice->CreateSamplerState(&desc, &pSS->m_pSampler));
+
+    return pSS;
   }
 
   /*************************************************************************/
@@ -1210,7 +1401,12 @@ namespace geEngineSDK {
       return;
     }
 
+#if USING(DX_VERSION_11_0)
     m_pActiveContext->DiscardView(pView);
+#else
+    //DX11.1+ has a different DiscardView signature
+    m_pActiveContext->DiscardView1(pView, nullptr, 0);
+#endif
   }
 
   void
@@ -1320,7 +1516,5 @@ namespace geEngineSDK {
   DX11RenderAPI::getBackBuffer() const {
     return m_pBackBufferTexture;
   }
-
-
 
 }

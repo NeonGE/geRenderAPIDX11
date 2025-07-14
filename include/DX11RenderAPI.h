@@ -41,7 +41,7 @@ namespace geEngineSDK {
     resizeSwapChain(uint32 newWidth, uint32 newHeight) override;
 
     bool
-    isMSAAFormatSupported(const TEXTURE_FORMAT::E format,
+    isMSAAFormatSupported(const GRAPHICS_FORMAT::E format,
                           int32& samplesPerPixel,
                           int32& sampleQuality) const override;
 
@@ -64,7 +64,7 @@ namespace geEngineSDK {
     SPtr<Texture>
     createTexture(uint32 width,
                   uint32 height,
-                  TEXTURE_FORMAT::E format,
+                  GRAPHICS_FORMAT::E format,
                   uint32 bindFlags = BIND_FLAG::SHADER_RESOURCE,
                   uint32 mipLevels = 1,
                   RESOURCE_USAGE::E usage = RESOURCE_USAGE::DEFAULT,
@@ -83,6 +83,54 @@ namespace geEngineSDK {
 
     SPtr<InputLayout>
     createInputLayoutFromShader(const WeakSPtr<VertexShader>& pVS);
+
+    /*************************************************************************/
+    // Create Buffers
+    /*************************************************************************/
+   private:
+    void
+    _createBuffer(uint32 bindFlags,
+                  SIZE_T sizeInBytes,
+                  const void* pInitialData,
+                  const uint32 usage,
+                  const uint32 byteStride,
+                  ID3D11Buffer** outBuffer,
+                  D3D11_BUFFER_DESC& outDesc) const;
+
+   public:
+    SPtr<VertexBuffer>
+    createVertexBuffer(const SPtr<VertexDeclaration>& pDecl, 
+                       const SIZE_T sizeInBytes,
+                       const void* pInitialData = nullptr,
+                       const uint32 usage = RESOURCE_USAGE::DEFAULT) override;
+
+    SPtr<IndexBuffer>
+    createIndexBuffer(const SIZE_T sizeInBytes,
+                      const void* pInitialData = nullptr,
+                      const INDEX_BUFFER_FORMAT::E format = INDEX_BUFFER_FORMAT::R32_UINT,
+                      const uint32 usage = RESOURCE_USAGE::DEFAULT) override;
+
+    SPtr<ConstantBuffer>
+    createConstantBuffer(const SIZE_T sizeInBytes,
+                         const void* pInitialData = nullptr,
+                         const uint32 usage = RESOURCE_USAGE::DEFAULT) override;
+
+    /*************************************************************************/
+    // Create Pipeline State Objects
+    /*************************************************************************/
+    SPtr<RasterizerState>
+    createRasterizerState(const RASTERIZER_DESC& rasterDesc) override;
+
+    SPtr<DepthStencilState>
+    createDepthStencilState(const DEPTH_STENCIL_DESC& depthStencilDesc) override;
+
+    SPtr<BlendState>
+    createBlendState(const BLEND_DESC& blendDesc,
+                     const Vector4 blendFactors = Vector4::ZERO,
+                     const uint32 sampleMask = NumLimit::MAX_UINT32) override;
+
+    SPtr<SamplerState>
+    createSamplerState(const SAMPLER_DESC& samplerDesc) override;
 
     /*************************************************************************/
     // Create Shaders

@@ -29,6 +29,7 @@
     <ClInclude Include="include\gePrerequisitesRenderAPIDX11.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="include\DXGraphicsBuffer.cpp" />
     <ClCompile Include="source\DX11RenderAPI.cpp" />
     <ClCompile Include="source\DXShader.cpp" />
     <ClCompile Include="source\DXTexture.cpp" />

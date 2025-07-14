@@ -7,12 +7,12 @@ namespace geEngineSDK {
   namespace TranslateUtils {
     
     /**
-     * @brief Converts a TEXTURE_FORMAT::E value to the corresponding DXGI_FORMAT value.
+     * @brief Converts a GRAPHICS_FORMAT::E value to the corresponding DXGI_FORMAT value.
      * @param inFormat The input texture format to convert.
      * @return The DXGI_FORMAT value corresponding to the specified texture format.
      */
     DXGI_FORMAT
-    get(TEXTURE_FORMAT::E inFormat);
+    get(GRAPHICS_FORMAT::E inFormat);
 
     /**
      * @brief Returns a string representation of a given DXGI_FORMAT value.
@@ -34,9 +34,9 @@ namespace geEngineSDK {
     fromString(const String& strFormat);
 
     /**
-     * @brief Converts a DXGI_FORMAT value to the corresponding TEXTURE_FORMAT::E value.
+     * @brief Converts a DXGI_FORMAT value to the corresponding GRAPHICS_FORMAT::E value.
      * @param inFormat The input DXGI_FORMAT to convert.
-     * @return The TEXTURE_FORMAT::E value corresponding to the specified DXGI_FORMAT.
+     * @return The GRAPHICS_FORMAT::E value corresponding to the specified DXGI_FORMAT.
      */
     TEXTURE2D_DESC
     get(const D3D11_TEXTURE2D_DESC& desc);

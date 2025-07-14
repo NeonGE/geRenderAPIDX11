@@ -51,5 +51,8 @@
     <ClCompile Include="source\DXShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="include\DXGraphicsBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

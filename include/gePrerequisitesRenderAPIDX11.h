@@ -38,6 +38,8 @@ using D3DSwapChain = IDXGISwapChain;
 using DXFactory = IDXGIFactory1;
 using DXGIDevice = IDXGIDevice1;
 using D3DRenderTargetView = ID3D11RenderTargetView;
+using D3DRasterizerState = ID3D11RasterizerState;
+using D3DBlendState = ID3D11BlendState;
 
 #elif USING(DX_VERSION_11_1)
 # include <d3d11_1.h>
@@ -47,6 +49,8 @@ using D3DSwapChain = IDXGISwapChain1;
 using DXFactory = IDXGIFactory2;
 using DXGIDevice = IDXGIDevice2;
 using D3DRenderTargetView = ID3D11RenderTargetView;
+using D3DRasterizerState = ID3D11RasterizerState1;
+using D3DBlendState = ID3D11BlendState1;
 
 #elif USING(DX_VERSION_11_2)
 # include <d3d11_2.h>
@@ -56,6 +60,8 @@ using D3DSwapChain = IDXGISwapChain1;
 using DXFactory = IDXGIFactory2;
 using DXGIDevice = IDXGIDevice3;
 using D3DRenderTargetView = ID3D11RenderTargetView;
+using D3DRasterizerState = ID3D11RasterizerState1;
+using D3DBlendState = ID3D11BlendState1;
 
 #elif USING(DX_VERSION_11_3)
 # include <d3d11_3.h>
@@ -65,6 +71,8 @@ using D3DSwapChain = IDXGISwapChain2;
 using DXFactory = IDXGIFactory2;
 using DXGIDevice = IDXGIDevice3;
 using D3DRenderTargetView = ID3D11RenderTargetView1;
+using D3DRasterizerState = ID3D11RasterizerState2;
+using D3DBlendState = ID3D11BlendState1;
 
 #elif USING(DX_VERSION_11_4)
 # include <d3d11_4.h>
@@ -74,6 +82,8 @@ using D3DSwapChain = IDXGISwapChain4;
 using DXFactory = IDXGIFactory2;
 using DXGIDevice = IDXGIDevice3;
 using D3DRenderTargetView = ID3D11RenderTargetView1;
+using D3DRasterizerState = ID3D11RasterizerState2;
+using D3DBlendState = ID3D11BlendState1;
 
 #else
 # error "No DirectX version defined. Please define a DirectX version to use."
