@@ -583,9 +583,9 @@ namespace geEngineSDK {
                                                          &rDesc,
                                                          &pTexture->m_ppRTV[i]));
 #else
-        throwIfFailed(m_pDevice->CreateRenderTargetView1(pTexture->m_pTexture,
-                                                         &rDesc,
-                                                         &pTexture->m_ppRTV[i]));
+        throwIfFailed(m_pDevice->CreateRenderTargetView(pTexture->m_pTexture,
+                                                        &rDesc,
+                                                        &pTexture->m_ppRTV[i]));
 #endif          
       }
     }
@@ -973,7 +973,7 @@ namespace geEngineSDK {
       rtOut.RenderTargetWriteMask = rtIn.renderTargetWriteMask;
     }
 
-    throwIfFailed(m_pDevice->CreateBlendState(&rtOut, &pBS->m_pBlendState));
+    throwIfFailed(m_pDevice->CreateBlendState(&desc, &pBS->m_pBlendState));
 #else
     D3D11_BLEND_DESC1 desc;
     memcpy(&desc, &blendDesc, sizeof(desc));
@@ -1250,6 +1250,16 @@ namespace geEngineSDK {
       reinterpret_cast<ID3D11Resource*>(pTex->_getGraphicsResource());
     GE_ASSERT(pGraphRes);
 
+#if USING(DX_VERSION_11_0)
+    GE_UNREFERENCED_PARAMETER(copyFlags);
+    m_pActiveContext->UpdateSubresource(pGraphRes,
+                                        dstSubRes,
+                                        pDstBox ? nullptr :
+                                        reinterpret_cast<const D3D11_BOX*>(pDstBox),
+                                        pSrcData,
+                                        srcRowPitch,
+                                        srcDepthPitch);
+#else
     m_pActiveContext->UpdateSubresource1(pGraphRes,
                                          dstSubRes,
                                          pDstBox ? nullptr :
@@ -1258,6 +1268,7 @@ namespace geEngineSDK {
                                          srcRowPitch,
                                          srcDepthPitch,
                                          copyFlags);
+#endif
   }
 
   MappedSubresource
@@ -1380,6 +1391,10 @@ namespace geEngineSDK {
 
   void
   DX11RenderAPI::discardView(WeakSPtr<Texture> pTexture) {
+#if USING(DX_VERSION_11_0)
+    GE_UNREFERENCED_PARAMETER(pTexture);
+    return;
+#else
     GE_ASSERT(m_pActiveContext);
 
     if (pTexture.expired()) {
@@ -1401,10 +1416,6 @@ namespace geEngineSDK {
       return;
     }
 
-#if USING(DX_VERSION_11_0)
-    m_pActiveContext->DiscardView(pView);
-#else
-    //DX11.1+ has a different DiscardView signature
     m_pActiveContext->DiscardView1(pView, nullptr, 0);
 #endif
   }
@@ -1418,14 +1429,19 @@ namespace geEngineSDK {
 #else
     static DXGI_PRESENT_PARAMETERS presentParams = {};
     m_pSwapChain->Present1(1, 0, &presentParams);
-    //m_pActiveContext->DiscardView(m_pBackBufferTexture->m_ppRTV[0]);
-    //m_pActiveContext->DiscardView(m_pDepthStencil->m_pDSV);
 #endif
   }
 
   void
   DX11RenderAPI::setImmediateContext() {
     m_pActiveContext = m_pImmediateDC;
+  }
+
+  void
+  DX11RenderAPI::setTopology(PRIMITIVE_TOPOLOGY::E topologyType) {
+    GE_ASSERT(m_pActiveContext);
+    m_pActiveContext->IASetPrimitiveTopology(
+      static_cast<D3D11_PRIMITIVE_TOPOLOGY>(topologyType));
   }
 
   void

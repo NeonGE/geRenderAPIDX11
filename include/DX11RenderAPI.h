@@ -206,6 +206,9 @@ namespace geEngineSDK {
     setImmediateContext() override;
 
     void
+    setTopology(PRIMITIVE_TOPOLOGY::E topologyType) override;
+
+    void
     setViewports(const Vector<GRAPHICS_VIEWPORT>& viewports) override;
 
     void
