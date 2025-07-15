@@ -212,8 +212,249 @@ namespace geEngineSDK {
     setViewports(const Vector<GRAPHICS_VIEWPORT>& viewports) override;
 
     void
+    setInputLayout(const WeakSPtr<InputLayout>& pInputLayout) override;
+
+    void
+    setRasterizerState(const WeakSPtr<RasterizerState>& pRasterizerState) override;
+
+    void
+    setDepthStencilState(const WeakSPtr<DepthStencilState>& pDepthStencilState,
+                         uint32 stencilRef = 0) override;
+
+    void
+    setBlendState(const WeakSPtr<BlendState>& pBlendState) override;
+
+    void
+    setVertexBuffer(const WeakSPtr<VertexBuffer>& pVertexBuffer,
+                    uint32 startSlot = 0,
+                    uint32 offset = 0) override;
+
+    void
+    setIndexBuffer(const WeakSPtr<IndexBuffer>& pIndexBuffer,
+                   uint32 offset = 0) override;
+
+    /*************************************************************************/
+    // Set Shaders
+    /*************************************************************************/
+   private:
+    enum class ShaderStage {
+      Vertex,
+      Pixel,
+      Geometry,
+      Hull,
+      Domain,
+      Compute
+    };
+
+    template<ShaderStage Stage>
+    struct ShaderTraits;
+
+    template<>
+    struct ShaderTraits<ShaderStage::Vertex> {
+      using ShaderInterface = ID3D11VertexShader;
+      static constexpr auto SetProgramFn = &ID3D11DeviceContext::VSSetShader;
+      static constexpr auto SetSRVFn = &ID3D11DeviceContext::VSSetShaderResources;
+      static constexpr auto SetCBuffFn = &ID3D11DeviceContext::VSSetConstantBuffers;
+      static constexpr auto SetSamplerFn = &ID3D11DeviceContext::VSSetSamplers;
+    };
+
+    template<>
+    struct ShaderTraits<ShaderStage::Pixel> {
+      using ShaderInterface = ID3D11PixelShader;
+      static constexpr auto SetProgramFn = &ID3D11DeviceContext::PSSetShader;
+      static constexpr auto SetSRVFn = &ID3D11DeviceContext::PSSetShaderResources;
+      static constexpr auto SetCBuffFn = &ID3D11DeviceContext::PSSetConstantBuffers;
+      static constexpr auto SetSamplerFn = &ID3D11DeviceContext::PSSetSamplers;
+    };
+
+    template<>
+    struct ShaderTraits<ShaderStage::Geometry> {
+      using ShaderInterface = ID3D11GeometryShader;
+      static constexpr auto SetProgramFn = &ID3D11DeviceContext::GSSetShader;
+      static constexpr auto SetSRVFn = &ID3D11DeviceContext::GSSetShaderResources;
+      static constexpr auto SetCBuffFn = &ID3D11DeviceContext::GSSetConstantBuffers;
+      static constexpr auto SetSamplerFn = &ID3D11DeviceContext::GSSetSamplers;
+    };
+
+    template<>
+    struct ShaderTraits<ShaderStage::Hull> {
+      using ShaderInterface = ID3D11HullShader;
+      static constexpr auto SetProgramFn = &ID3D11DeviceContext::HSSetShader;
+      static constexpr auto SetSRVFn = &ID3D11DeviceContext::HSSetShaderResources;
+      static constexpr auto SetCBuffFn = &ID3D11DeviceContext::HSSetConstantBuffers;
+      static constexpr auto SetSamplerFn = &ID3D11DeviceContext::HSSetSamplers;
+    };
+
+    template<>
+    struct ShaderTraits<ShaderStage::Domain> {
+      using ShaderInterface = ID3D11DomainShader;
+      static constexpr auto SetProgramFn = &ID3D11DeviceContext::DSSetShader;
+      static constexpr auto SetSRVFn = &ID3D11DeviceContext::DSSetShaderResources;
+      static constexpr auto SetCBuffFn = &ID3D11DeviceContext::DSSetConstantBuffers;
+      static constexpr auto SetSamplerFn = &ID3D11DeviceContext::DSSetSamplers;
+    };
+
+    template<>
+    struct ShaderTraits<ShaderStage::Compute> {
+      using ShaderInterface = ID3D11ComputeShader;
+      static constexpr auto SetProgramFn = &ID3D11DeviceContext::CSSetShader;
+      static constexpr auto SetSRVFn = &ID3D11DeviceContext::CSSetShaderResources;
+      static constexpr auto SetCBuffFn = &ID3D11DeviceContext::CSSetConstantBuffers;
+      static constexpr auto SetSamplerFn = &ID3D11DeviceContext::CSSetSamplers;
+    };
+
+    template<ShaderStage Stage, typename TShader>
+    FORCEINLINE void
+    _setProgram(const WeakSPtr<TShader>& pInShader);
+
+    template<ShaderStage Stage>
+    FORCEINLINE void
+    _setShaderResource(const WeakSPtr<Texture>& pTexture, const uint32 startSlot);
+
+    template<ShaderStage Stage>
+    FORCEINLINE void
+    _setConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer, const uint32 startSlot);
+
+    template<ShaderStage Stage>
+    FORCEINLINE void
+    _setSampler(const WeakSPtr<SamplerState>& pSampler, const uint32 startSlot);
+
+   public:
+    void
+    vsSetProgram(const WeakSPtr<VertexShader>& pInShader);
+    
+    void
+    psSetProgram(const WeakSPtr<PixelShader>& pInShader);
+    
+    void
+    gsSetProgram(const WeakSPtr<GeometryShader>& pInShader);
+    
+    void
+    hsSetProgram(const WeakSPtr<HullShader>& pInShader);
+    
+    void
+    dsSetProgram(const WeakSPtr<DomainShader>& pInShader);
+    
+    void
+    csSetProgram(const WeakSPtr<ComputeShader>& pInShader);
+
+    /*************************************************************************/
+    // Set Shaders Resources
+    /*************************************************************************/
+    void
+    vsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                        const uint32 startSlot = 0);
+
+    void
+    psSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                        const uint32 startSlot = 0);
+
+    void
+    gsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                        const uint32 startSlot = 0);
+
+    void
+    hsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                        const uint32 startSlot = 0);
+
+    void
+    dsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                        const uint32 startSlot = 0);
+
+    void
+    csSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                        const uint32 startSlot = 0);
+
+    /*************************************************************************/
+    // Set Unordered Access Views
+    /*************************************************************************/
+    void
+    csSetUnorderedAccessView(const WeakSPtr<Texture>& pTexture,
+                             const uint32 startSlot = 0) override;
+
+
+    /*************************************************************************/
+    // Set Constant Buffers
+    /*************************************************************************/
+    void
+    vsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                        const uint32 startSlot = 0) override;
+
+    void
+    psSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                        const uint32 startSlot = 0) override;
+
+    void
+    gsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                        const uint32 startSlot = 0) override;
+
+    void
+    hsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                        const uint32 startSlot = 0) override;
+
+    void
+    dsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                        const uint32 startSlot = 0) override;
+
+    void
+    csSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                        const uint32 startSlot = 0) override;
+
+    /*************************************************************************/
+    // Set Samplers
+    /*************************************************************************/
+    void
+    vsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                 const uint32 startSlot = 0) override;
+
+    void
+    psSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                 const uint32 startSlot = 0) override;
+
+    void
+    gsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                 const uint32 startSlot = 0) override;
+
+    void
+    hsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                 const uint32 startSlot = 0) override;
+
+    void
+    dsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                 const uint32 startSlot = 0) override;
+
+    void
+    csSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                 const uint32 startSlot = 0) override;
+
+    /*************************************************************************/
+    // Set Render Targets
+    /*************************************************************************/
+    void
     setRenderTargets(const Vector<RenderTarget>& pTargets,
                      const WeakSPtr<Texture>& pDepthStencilView) override;
+
+    /*************************************************************************/
+    // Draw Functions
+    /*************************************************************************/
+    void
+    draw(uint32 vertexCount, uint32 startVertexLocation = 0) override;
+
+    void
+    drawIndexed(uint32 indexCount,
+                uint32 startIndexLocation = 0,
+                int32 baseVertexLocation = 0) override;
+
+    void
+    drawInstanced(uint32 vertexCountPerInstance,
+                  uint32 instanceCount,
+                  uint32 startVertexLocation = 0,
+                  uint32 startInstanceLocation = 0) override;
+
+    void
+    dispatch(uint32 threadGroupCountX,
+             uint32 threadGroupCountY = 1,
+             uint32 threadGroupCountZ = 1) override;
 
    private:
     void

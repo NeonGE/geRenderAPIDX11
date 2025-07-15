@@ -1461,6 +1461,331 @@ namespace geEngineSDK {
   }
 
   void
+  DX11RenderAPI::setInputLayout(const WeakSPtr<InputLayout>& pInputLayout) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11InputLayout* pLayout = nullptr;
+    if (!pInputLayout.expired()) {
+      auto pObj = reinterpret_cast<DXInputLayout*>(pInputLayout.lock().get());
+      pLayout = pObj->m_inputLayout;
+    }
+
+    m_pActiveContext->IASetInputLayout(pLayout);
+  }
+
+  void
+  DX11RenderAPI::setRasterizerState(const WeakSPtr<RasterizerState>& pRasterizerState) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11RasterizerState1* pRS = nullptr;
+    if (!pRasterizerState.expired()) {
+      auto pRSState = reinterpret_cast<DXRasterizerState*>(pRasterizerState.lock().get());
+      pRS = pRSState->m_pRasterizerState;
+    }
+
+    m_pActiveContext->RSSetState(pRS);
+  }
+
+  void
+  DX11RenderAPI::setDepthStencilState(const WeakSPtr<DepthStencilState>& pDepthStencilState,
+                                      uint32 stencilRef) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11DepthStencilState* pDSS = nullptr;
+    if (!pDepthStencilState.expired()) {
+      auto pDSSState = reinterpret_cast<DXDepthStencilState*>(pDepthStencilState.lock().get());
+      pDSS = pDSSState->m_pDepthStencilState;
+    }
+
+    m_pActiveContext->OMSetDepthStencilState(pDSS, stencilRef);
+  }
+
+  void
+  DX11RenderAPI::setBlendState(const WeakSPtr<BlendState>& pBlendState) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11BlendState1* pBS = nullptr;
+    Vector4 blendFactors(geEngineSDK::FORCE_INIT::kForceInitToZero);
+    uint32 sampleMask = 0xffffffff;
+
+    if (!pBlendState.expired()) {
+      auto pBlend = reinterpret_cast<DXBlendState*>(pBlendState.lock().get());
+      pBS = pBlend->m_pBlendState;
+      blendFactors = pBlend->m_blendFactors;
+      sampleMask = pBlend->m_sampleMask;
+    }
+
+    m_pActiveContext->OMSetBlendState(pBS, &blendFactors[0], sampleMask);
+  }
+
+  void
+  DX11RenderAPI::setVertexBuffer(const WeakSPtr<VertexBuffer>& pVertexBuffer,
+                                 uint32 startSlot,
+                                 uint32 offset) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11Buffer* pBuffer = nullptr;
+    UINT stride = 0;
+    UINT offsetInBytes = offset;
+
+    if (!pVertexBuffer.expired()) {
+      auto pVB = reinterpret_cast<DXVertexBuffer*>(pVertexBuffer.lock().get());
+      pBuffer = pVB->m_pBuffer;
+      stride = pVB->m_pVertexDeclaration->getProperties().getVertexSize(0);
+    }
+
+    m_pActiveContext->IASetVertexBuffers(startSlot, 1, &pBuffer, &stride, &offsetInBytes);
+  }
+
+  void
+    DX11RenderAPI::setIndexBuffer(const WeakSPtr<IndexBuffer>& pIndexBuffer,
+                                  uint32 offset) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11Buffer* pBuffer = nullptr;
+    DXGI_FORMAT format = DXGI_FORMAT_R32_UINT;
+    UINT offsetInBytes = offset;
+
+    if (!pIndexBuffer.expired()) {
+      auto pIB = reinterpret_cast<DXIndexBuffer*>(pIndexBuffer.lock().get());
+      pBuffer = pIB->m_pBuffer;
+      format = static_cast<DXGI_FORMAT>(pIB->m_indexFormat);
+    }
+
+    m_pActiveContext->IASetIndexBuffer(pBuffer, format, offsetInBytes);
+  }
+
+  /*************************************************************************/
+  // Set Shaders
+  /*************************************************************************/
+  template<DX11RenderAPI::ShaderStage Stage, typename TShader>
+  void
+  DX11RenderAPI::_setProgram(const WeakSPtr<TShader>& pInShader) {
+    GE_ASSERT(m_pActiveContext);
+
+    using Traits = ShaderTraits<Stage>;
+    typename Traits::ShaderInterface* pShader = nullptr;
+
+    if (!pInShader.expired()) {
+      auto pObj = reinterpret_cast<DXShader*>(pInShader.lock().get());
+      pShader = reinterpret_cast<typename Traits::ShaderInterface*>(pObj->m_pShader);
+    }
+
+    (m_pActiveContext->*Traits::SetProgramFn)(pShader, nullptr, 0);
+  }
+
+  void
+  DX11RenderAPI::vsSetProgram(const WeakSPtr<VertexShader>& pInShader) {
+    _setProgram<ShaderStage::Vertex>(pInShader);
+  }
+
+  void
+  DX11RenderAPI::psSetProgram(const WeakSPtr<PixelShader>& pInShader) {
+    _setProgram<ShaderStage::Pixel>(pInShader);
+  }
+
+  void
+  DX11RenderAPI::gsSetProgram(const WeakSPtr<GeometryShader>& pInShader) {
+    _setProgram<ShaderStage::Geometry>(pInShader);
+  }
+
+  void
+  DX11RenderAPI::hsSetProgram(const WeakSPtr<HullShader>& pInShader) {
+    _setProgram<ShaderStage::Hull>(pInShader);
+  }
+
+  void
+  DX11RenderAPI::dsSetProgram(const WeakSPtr<DomainShader>& pInShader) {
+    _setProgram<ShaderStage::Domain>(pInShader);
+  }
+
+  void
+  DX11RenderAPI::csSetProgram(const WeakSPtr<ComputeShader>& pInShader) {
+    _setProgram<ShaderStage::Compute>(pInShader);
+  }
+
+  template<DX11RenderAPI::ShaderStage Stage>
+  void DX11RenderAPI::_setShaderResource(const WeakSPtr<Texture>& pTexture,
+                                         const uint32 startSlot) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11ShaderResourceView* pSRV = nullptr;
+    if (!pTexture.expired()) {
+      auto pTx = reinterpret_cast<DXTexture*>(pTexture.lock().get());
+      pSRV = pTx->m_ppSRV[0];
+    }
+
+    (m_pActiveContext->*ShaderTraits<Stage>::SetSRVFn)(startSlot, 1, &pSRV);
+  }
+
+  /*************************************************************************/
+  // Set Shaders Resources
+  /*************************************************************************/
+  void
+  DX11RenderAPI::vsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                                     const uint32 startSlot) {
+    _setShaderResource<ShaderStage::Vertex>(pTexture, startSlot);
+  }
+
+  void
+  DX11RenderAPI::psSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                                     const uint32 startSlot) {
+    _setShaderResource<ShaderStage::Pixel>(pTexture, startSlot);
+  }
+
+  void
+  DX11RenderAPI::gsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                                     const uint32 startSlot) {
+    _setShaderResource<ShaderStage::Geometry>(pTexture, startSlot);
+  }
+
+  void
+  DX11RenderAPI::hsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                                     const uint32 startSlot) {
+    _setShaderResource<ShaderStage::Hull>(pTexture, startSlot);
+  }
+
+  void
+  DX11RenderAPI::dsSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                                     const uint32 startSlot) {
+    _setShaderResource<ShaderStage::Domain>(pTexture, startSlot);
+  }
+
+  void
+  DX11RenderAPI::csSetShaderResource(const WeakSPtr<Texture>& pTexture,
+                                     const uint32 startSlot) {
+    _setShaderResource<ShaderStage::Compute>(pTexture, startSlot);
+  }
+
+  /*************************************************************************/
+  // Set Unordered Access Views
+  /*************************************************************************/
+  void
+  DX11RenderAPI::csSetUnorderedAccessView(const WeakSPtr<Texture>& pTexture,
+                                          const uint32 startSlot) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11UnorderedAccessView* pUAV = nullptr;
+    if (!pTexture.expired()) {
+      auto pTx = reinterpret_cast<DXTexture*>(pTexture.lock().get());
+      pUAV = pTx->m_ppUAV[0];
+    }
+
+    m_pActiveContext->CSSetUnorderedAccessViews(startSlot, 1, &pUAV, nullptr);
+  }
+
+  /*************************************************************************/
+  // Set Constant Buffers
+  /*************************************************************************/
+  template<DX11RenderAPI::ShaderStage Stage>
+  void
+    DX11RenderAPI::_setConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+      const uint32 startSlot) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11Buffer* pDXBuffer = nullptr;
+    if (!pBuffer.expired()) {
+      auto pCB = reinterpret_cast<DXConstantBuffer*>(pBuffer.lock().get());
+      pDXBuffer = pCB->m_pBuffer;
+    }
+
+    (m_pActiveContext->*ShaderTraits<Stage>::SetCBuffFn)(startSlot, 1, &pDXBuffer);
+  }
+
+  void
+  DX11RenderAPI::vsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                                     const uint32 startSlot) {
+    _setConstantBuffer<ShaderStage::Vertex>(pBuffer, startSlot);
+  }
+
+  void
+  DX11RenderAPI::psSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                                     const uint32 startSlot) {
+    _setConstantBuffer<ShaderStage::Pixel>(pBuffer, startSlot);
+  }
+
+  void
+  DX11RenderAPI::gsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                                     const uint32 startSlot) {
+    _setConstantBuffer<ShaderStage::Geometry>(pBuffer, startSlot);
+  }
+
+  void
+  DX11RenderAPI::hsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                                     const uint32 startSlot) {
+    _setConstantBuffer<ShaderStage::Hull>(pBuffer, startSlot);
+  }
+
+  void
+  DX11RenderAPI::dsSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                                     const uint32 startSlot) {
+    _setConstantBuffer<ShaderStage::Domain>(pBuffer, startSlot);
+  }
+
+  void
+  DX11RenderAPI::csSetConstantBuffer(const WeakSPtr<ConstantBuffer>& pBuffer,
+                                     const uint32 startSlot) {
+    _setConstantBuffer<ShaderStage::Compute>(pBuffer, startSlot);
+  }
+
+  /*************************************************************************/
+  // Set Samplers
+  /*************************************************************************/
+  template<DX11RenderAPI::ShaderStage Stage>
+  void
+  DX11RenderAPI::_setSampler(const WeakSPtr<SamplerState>& pSampler,
+                             const uint32 startSlot) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11SamplerState* pSS = nullptr;
+    if (!pSampler.expired()) {
+      auto pObj = reinterpret_cast<DXSamplerState*>(pSampler.lock().get());
+      pSS = pObj->m_pSampler;
+    }
+
+    (m_pActiveContext->*ShaderTraits<Stage>::SetSamplerFn)(startSlot, 1, &pSS);
+  }
+
+  void
+  DX11RenderAPI::vsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                              const uint32 startSlot) {
+    _setSampler<ShaderStage::Vertex>(pSampler, startSlot);
+  }
+
+  void
+  DX11RenderAPI::psSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                              const uint32 startSlot) {
+    _setSampler<ShaderStage::Pixel>(pSampler, startSlot);
+  }
+
+  void
+  DX11RenderAPI::gsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                              const uint32 startSlot) {
+    _setSampler<ShaderStage::Geometry>(pSampler, startSlot);
+  }
+
+  void
+  DX11RenderAPI::hsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                              const uint32 startSlot) {
+    _setSampler<ShaderStage::Hull>(pSampler, startSlot);
+  }
+
+  void
+  DX11RenderAPI::dsSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                              const uint32 startSlot) {
+    _setSampler<ShaderStage::Domain>(pSampler, startSlot);
+  }
+
+  void
+  DX11RenderAPI::csSetSampler(const WeakSPtr<SamplerState>& pSampler,
+                              const uint32 startSlot) {
+    _setSampler<ShaderStage::Compute>(pSampler, startSlot);
+  }
+
+  /*************************************************************************/
+  // Set Render Targets
+  /*************************************************************************/
+  void
   DX11RenderAPI::setRenderTargets(const Vector<RenderTarget>& pTargets,
                                   const WeakSPtr<Texture>& pDepthStencilView) {
     GE_ASSERT(m_pActiveContext);
@@ -1493,6 +1818,42 @@ namespace geEngineSDK {
     }
 
     m_pActiveContext->OMSetRenderTargets(numTargets, pRTVs.data(), pDS);
+  }
+
+  void
+  DX11RenderAPI::draw(uint32 vertexCount, uint32 startVertexLocation) {
+    GE_ASSERT(m_pActiveContext);
+    m_pActiveContext->Draw(vertexCount, startVertexLocation);
+  }
+
+  void
+  DX11RenderAPI::drawIndexed(uint32 indexCount,
+                             uint32 startIndexLocation,
+                             int32 baseVertexLocation) {
+    GE_ASSERT(m_pActiveContext);
+    m_pActiveContext->DrawIndexed(indexCount, startIndexLocation, baseVertexLocation);
+  }
+
+  void
+  DX11RenderAPI::drawInstanced(uint32 vertexCountPerInstance,
+                               uint32 instanceCount,
+                               uint32 startVertexLocation,
+                               uint32 startInstanceLocation) {
+    GE_ASSERT(m_pActiveContext);
+    m_pActiveContext->DrawInstanced(vertexCountPerInstance,
+                                    instanceCount,
+                                    startVertexLocation,
+                                    startInstanceLocation);
+  }
+
+  void
+  DX11RenderAPI::dispatch(uint32 threadGroupCountX,
+                          uint32 threadGroupCountY,
+                          uint32 threadGroupCountZ) {
+    GE_ASSERT(m_pActiveContext);
+    m_pActiveContext->Dispatch(threadGroupCountX,
+                               threadGroupCountY,
+                               threadGroupCountZ);
   }
 
   void
