@@ -89,6 +89,9 @@ namespace geEngineSDK {
     SPtr<VertexDeclaration>
     createVertexDeclaration(const Vector<VertexElement>& elements) override;
 
+    SPtr<StreamOutputDeclaration>
+    createStreamOutputDeclaration(const Vector<StreamOutputElement>& elements) override;
+
     SPtr<InputLayout>
     createInputLayout(const WeakSPtr<VertexDeclaration>& descArray,
                       const WeakSPtr<VertexShader>& pVS) override;
@@ -115,6 +118,11 @@ namespace geEngineSDK {
                        const SIZE_T sizeInBytes,
                        const void* pInitialData = nullptr,
                        const uint32 usage = RESOURCE_USAGE::DEFAULT) override;
+
+    SPtr<StreamOutputBuffer>
+    createStreamOutputBuffer(const SPtr<StreamOutputDeclaration>& pDecl,
+                             const SIZE_T sizeInBytes,
+                             const uint32 usage = RESOURCE_USAGE::DEFAULT) override;
 
     SPtr<IndexBuffer>
     createIndexBuffer(const SIZE_T sizeInBytes,
@@ -156,6 +164,10 @@ namespace geEngineSDK {
 
     SPtr<GeometryShader>
     createGeometryShader(CREATE_SHADER_PARAMS) override;
+
+    SPtr<GeometryShader>
+    createGeometryShaderWithStreamOutput(CREATE_SHADER_PARAMS,
+                                         const SPtr<StreamOutputDeclaration>& pDecl) override;
 
     SPtr<HullShader>
     createHullShader(CREATE_SHADER_PARAMS) override;
@@ -445,6 +457,18 @@ namespace geEngineSDK {
     void
     setRenderTargets(const Vector<RenderTarget>& pTargets,
                      const WeakSPtr<Texture>& pDepthStencilView) override;
+
+    void
+    setStreamOutputTarget(const WeakSPtr<StreamOutputBuffer>& pBuffer) override;
+
+    /*************************************************************************/
+    // State Management Functions
+    /*************************************************************************/
+    SPtr<PipelineState>
+    savePipelineState() const override;
+
+    void
+    restorePipelineState(const WeakSPtr<PipelineState>& pState) override;
 
     /*************************************************************************/
     // Draw Functions

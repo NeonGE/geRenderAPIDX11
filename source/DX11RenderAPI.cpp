@@ -55,7 +55,7 @@ namespace geEngineSDK {
         filePath = _findFile(pFileName);
         if (filePath == Path::BLANK) {
           GE_LOG(kError,
-                 Uncategorized,
+                 RenderAPI,
                  "Failed to find {0} in include folders",
                  pFileName);
           return E_FAIL;
@@ -69,7 +69,7 @@ namespace geEngineSDK {
       auto fileStream = FileSystem::openFile(filePath);
       if (!fileStream) {
         GE_LOG(kError,
-               Uncategorized,
+               RenderAPI,
                "Failed to open shader include file: {0}",
                filePath.toString());
         return E_FAIL; //Failed to open the include file
@@ -679,11 +679,23 @@ namespace geEngineSDK {
     GE_ASSERT(m_pDevice);
     if (elements.empty()) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "DX11RenderAPI::createVertexDeclaration called with no elements.");
       return nullptr;
     }
     return ge_shared_ptr_new<VertexDeclaration>(elements);
+  }
+
+  SPtr<StreamOutputDeclaration>
+  DX11RenderAPI::createStreamOutputDeclaration(const Vector<StreamOutputElement>& elements) {
+    GE_ASSERT(m_pDevice);
+    if (elements.empty()) {
+      GE_LOG(kError,
+             RenderAPI,
+             "DX11RenderAPI::createVertexDeclaration called with no elements.");
+      return nullptr;
+    }
+    return ge_shared_ptr_new<StreamOutputDeclaration>(elements);
   }
 
   SPtr<InputLayout>
@@ -693,7 +705,7 @@ namespace geEngineSDK {
 
     if(descArray.expired() || pVS.expired()) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "DX11RenderAPI::createInputLayout called with Invalid Parameters");
       return nullptr;
     }
@@ -737,8 +749,8 @@ namespace geEngineSDK {
                                               &inputLayout->m_inputLayout);
     if (FAILED(hr)) {
       GE_LOG(kError,
-        Uncategorized,
-        "Failed to create Input Layout.");
+             RenderAPI,
+             "Failed to create Input Layout.");
       return nullptr;
     }
     
@@ -754,7 +766,7 @@ namespace geEngineSDK {
 
     if (pVS.expired()) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Vertex Shader is expired.");
       return nullptr;
     }
@@ -858,6 +870,29 @@ namespace geEngineSDK {
     pVB->m_pVertexDeclaration = pDecl;
 
     return pVB;
+  }
+
+  SPtr<StreamOutputBuffer>
+  DX11RenderAPI::createStreamOutputBuffer(const SPtr<StreamOutputDeclaration>& pDecl,
+                                          const SIZE_T sizeInBytes,
+                                          const uint32 usage) {
+    GE_ASSERT(m_pDevice);
+    auto pSOB = ge_shared_ptr_new<DXStreamOutputBuffer>();
+
+    auto& soProps = pDecl->getProperties();
+    uint32 byteStride = soProps.getComponentCountForOutputSlot(0) * sizeof(float);
+
+    _createBuffer(D3D11_BIND_STREAM_OUTPUT | D3D11_BIND_VERTEX_BUFFER,
+                  sizeInBytes,
+                  nullptr, //Stream output buffers are not initialized
+                  usage,
+                  byteStride,
+                  &pSOB->m_pBuffer,
+                  pSOB->m_Desc);
+
+    pSOB->m_pStreamOutputDeclaration = pDecl;
+
+    return pSOB;
   }
 
   SPtr<IndexBuffer>
@@ -1046,7 +1081,7 @@ namespace geEngineSDK {
     if (FAILED(hr)) {
       if (nullptr != pErrorBlob) {
         GE_LOG(kError,
-               Uncategorized,
+               RenderAPI,
                reinterpret_cast<char*>(pErrorBlob->GetBufferPointer()));
         safeRelease(pErrorBlob);
       }
@@ -1066,7 +1101,7 @@ namespace geEngineSDK {
 
     if (!_compileFromFile(fileName, pMacro, szEntryPoint, szShaderModel, &vShader->m_pBlob)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Could not compile VertexShader Shader from {1}", fileName);
       return nullptr;
     }
@@ -1077,7 +1112,7 @@ namespace geEngineSDK {
                               reinterpret_cast<ID3D11VertexShader**>(&vShader->m_pShader));
     if (FAILED(hr)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Failed to create VertexShader Shader '{1}' from '{2}'",
              szEntryPoint,
              fileName);
@@ -1094,7 +1129,7 @@ namespace geEngineSDK {
 
     if (!_compileFromFile(fileName, pMacro, szEntryPoint, szShaderModel, &vShader->m_pBlob)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Could not compile PixelShader Shader from {1}", fileName);
       return nullptr;
     }
@@ -1105,7 +1140,7 @@ namespace geEngineSDK {
                               reinterpret_cast<ID3D11PixelShader**>(&vShader->m_pShader));
     if (FAILED(hr)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Failed to create PixelShader Shader '{1}' from '{2}'",
              szEntryPoint,
              fileName);
@@ -1122,7 +1157,7 @@ namespace geEngineSDK {
 
     if (!_compileFromFile(fileName, pMacro, szEntryPoint, szShaderModel, &vShader->m_pBlob)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Could not compile GeometryShader Shader from {1}", fileName);
       return nullptr;
     }
@@ -1133,7 +1168,7 @@ namespace geEngineSDK {
                               reinterpret_cast<ID3D11GeometryShader**>(&vShader->m_pShader));
     if (FAILED(hr)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Failed to create GeometryShader Shader '{1}' from '{2}'",
              szEntryPoint,
              fileName);
@@ -1143,6 +1178,62 @@ namespace geEngineSDK {
     return vShader;
   }
 
+  SPtr<GeometryShader>
+  DX11RenderAPI::createGeometryShaderWithStreamOutput(CREATE_SHADER_PARAMS,
+                   const SPtr<StreamOutputDeclaration>& pDecl) {
+    GE_ASSERT(m_pDevice);
+
+    //First we create the Stream Output Descriptor
+    Vector<D3D11_SO_DECLARATION_ENTRY> pDeclArray;    
+    const auto& elements = pDecl->getProperties().getElements();
+    pDeclArray.resize(elements.size());
+
+    for (uint32 i = 0; i < elements.size(); ++i) {
+      D3D11_SO_DECLARATION_ENTRY& entry = pDeclArray[i];
+      auto& elem = elements[i];
+
+      entry.Stream = elem.getStreamIndex();
+      entry.SemanticName = TranslateUtils::toString(elem.getSemantic());
+      entry.SemanticIndex = elem.getSemanticIndex();
+      entry.StartComponent = elem.getComponentStart();
+      entry.ComponentCount = elem.getComponentCount();
+      entry.OutputSlot = 0; //We only support one output slot
+    }
+
+    auto vShader = ge_shared_ptr_new<DXShader>();
+
+    if (!_compileFromFile(fileName, pMacro, szEntryPoint, szShaderModel, &vShader->m_pBlob)) {
+      GE_LOG(kError,
+        RenderAPI,
+        "Could not compile GeometryShader Shader from {1}", fileName);
+      return nullptr;
+    }
+
+    UINT stride = pDecl->getProperties().getComponentCountForOutputSlot(0) * sizeof(float);
+
+    HRESULT hr = m_pDevice->CreateGeometryShaderWithStreamOutput(
+                              vShader->m_pBlob->GetBufferPointer(),
+                              vShader->m_pBlob->GetBufferSize(),
+                              pDeclArray.data(),
+                              static_cast<UINT>(pDeclArray.size()),
+                              &stride,
+                              1, //We don't use the buffer strides
+                              D3D11_SO_NO_RASTERIZED_STREAM,
+                              nullptr,
+                   reinterpret_cast<ID3D11GeometryShader**>(&vShader->m_pShader));
+    if (FAILED(hr)) {
+      GE_LOG(kError,
+             RenderAPI,
+             "Failed CreateGeometryShaderWithStreamOutput '{1}' from '{2}'",
+             szEntryPoint,
+             fileName);
+      return nullptr;
+    }
+
+    return vShader;
+
+  }
+
   SPtr<HullShader>
   DX11RenderAPI::createHullShader(CREATE_SHADER_PARAMS) {
     GE_ASSERT(m_pDevice);
@@ -1150,7 +1241,7 @@ namespace geEngineSDK {
 
     if (!_compileFromFile(fileName, pMacro, szEntryPoint, szShaderModel, &vShader->m_pBlob)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Could not compile HullShader Shader from {1}", fileName);
       return nullptr;
     }
@@ -1161,7 +1252,7 @@ namespace geEngineSDK {
                               reinterpret_cast<ID3D11HullShader**>(&vShader->m_pShader));
     if (FAILED(hr)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Failed to create GeometryShader Shader '{1}' from '{2}'",
              szEntryPoint,
              fileName);
@@ -1178,7 +1269,7 @@ namespace geEngineSDK {
 
     if (!_compileFromFile(fileName, pMacro, szEntryPoint, szShaderModel, &vShader->m_pBlob)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Could not compile DomainShader Shader from {1}", fileName);
       return nullptr;
     }
@@ -1189,7 +1280,7 @@ namespace geEngineSDK {
                               reinterpret_cast<ID3D11DomainShader**>(&vShader->m_pShader));
     if (FAILED(hr)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Failed to create DomainShader Shader '{1}' from '{2}'",
              szEntryPoint,
              fileName);
@@ -1206,7 +1297,7 @@ namespace geEngineSDK {
 
     if (!_compileFromFile(fileName, pMacro, szEntryPoint, szShaderModel, &vShader->m_pBlob)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Could not compile ComputeShader Shader from {1}", fileName);
       return nullptr;
     }
@@ -1217,7 +1308,7 @@ namespace geEngineSDK {
                               reinterpret_cast<ID3D11ComputeShader**>(&vShader->m_pShader));
     if (FAILED(hr)) {
       GE_LOG(kError,
-             Uncategorized,
+             RenderAPI,
              "Failed to create ComputeShader Shader '{1}' from '{2}'",
              szEntryPoint,
              fileName);
@@ -1297,7 +1388,7 @@ namespace geEngineSDK {
                           reinterpret_cast<D3D11_MAPPED_SUBRESOURCE*>(&mappedSubresource));
 
     if (mappedSubresource.pData == nullptr) {
-      GE_LOG(kError, Uncategorized, "Failed to map texture.");
+      GE_LOG(kError, RenderAPI, "Failed to map texture.");
     }
 
     return mappedSubresource;
@@ -1818,6 +1909,120 @@ namespace geEngineSDK {
     }
 
     m_pActiveContext->OMSetRenderTargets(numTargets, pRTVs.data(), pDS);
+  }
+
+  void
+  DX11RenderAPI::setStreamOutputTarget(const WeakSPtr<StreamOutputBuffer>& pBuffer) {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11Buffer* pDXBuffer = nullptr;
+    if (!pBuffer.expired()) {
+      auto pObj = reinterpret_cast<DXStreamOutputBuffer*>(pBuffer.lock().get());
+      pDXBuffer = pObj->m_pBuffer;
+    }
+
+    UINT offset = 0;
+    m_pActiveContext->SOSetTargets(1, &pDXBuffer, &offset);
+  }
+
+  SPtr<PipelineState>
+  DX11RenderAPI::savePipelineState() const {
+    GE_ASSERT(m_pActiveContext);
+
+    //First create a new PipelineState object
+    auto pBkState = ge_shared_ptr_new<DXPipelineState>();
+
+    pBkState->m_scissorRectsCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+    pBkState->m_viewportsCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+
+    m_pActiveContext->RSGetScissorRects(&pBkState->m_scissorRectsCount,
+                                        pBkState->m_scissorRects);
+    m_pActiveContext->RSGetViewports(&pBkState->m_viewportsCount, pBkState->m_viewports);
+    m_pActiveContext->RSGetState(&pBkState->m_rasterState);
+
+    m_pActiveContext->OMGetBlendState(&pBkState->m_blendState,
+                                      pBkState->m_blendFactor,
+                                      &pBkState->m_sampleMask);
+    m_pActiveContext->OMGetDepthStencilState(&pBkState->m_depthStencilState,
+                                             &pBkState->m_stencilRef);
+
+    m_pActiveContext->PSGetShaderResources(0, 1, &pBkState->m_psShaderResource);
+    m_pActiveContext->PSGetSamplers(0, 1, &pBkState->m_psSampler);
+
+    pBkState->m_psInstancesCount = 256;
+    pBkState->m_vsInstancesCount = 256;
+    pBkState->m_gsInstancesCount = 256;
+    m_pActiveContext->PSGetShader(&pBkState->m_ps,
+                                  pBkState->m_psInstances,
+                                  &pBkState->m_psInstancesCount);
+    m_pActiveContext->VSGetShader(&pBkState->m_vs,
+                                  pBkState->m_vsInstances,
+                                  &pBkState->m_vsInstancesCount);
+    m_pActiveContext->VSGetConstantBuffers(0, 1, &pBkState->m_vsConstantBuffer);
+    m_pActiveContext->GSGetShader(&pBkState->m_gs,
+                                  pBkState->m_gsInstances,
+                                  &pBkState->m_gsInstancesCount);
+
+    m_pActiveContext->IAGetPrimitiveTopology(&pBkState->m_primitiveTopology);
+    m_pActiveContext->IAGetIndexBuffer(&pBkState->m_indexBuffer,
+                                       &pBkState->m_indexBufferFormat,
+                                       &pBkState->m_indexBufferOffset);
+    m_pActiveContext->IAGetVertexBuffers(0,
+                                         1,
+                                         &pBkState->m_vertexBuffer,
+                                         &pBkState->m_vertexBufferStride,
+                                         &pBkState->m_vertexBufferOffset);
+
+    m_pActiveContext->IAGetInputLayout(&pBkState->m_inputLayout);
+
+    return pBkState;
+  }
+
+  void
+  DX11RenderAPI::restorePipelineState(const WeakSPtr<PipelineState>& pState) {
+    GE_ASSERT(m_pActiveContext);
+
+    if (pState.expired()) {
+      return;
+    }
+
+    auto pOldState = reinterpret_cast<DXPipelineState*>(pState.lock().get());
+
+    m_pActiveContext->RSSetScissorRects(pOldState->m_scissorRectsCount,
+                                        pOldState->m_scissorRects);
+    m_pActiveContext->RSSetViewports(pOldState->m_viewportsCount, pOldState->m_viewports);
+    m_pActiveContext->RSSetState(pOldState->m_rasterState);
+
+    m_pActiveContext->OMSetBlendState(pOldState->m_blendState,
+                                      pOldState->m_blendFactor,
+                                      pOldState->m_sampleMask);
+    m_pActiveContext->OMSetDepthStencilState(pOldState->m_depthStencilState,
+                                             pOldState->m_stencilRef);
+
+    m_pActiveContext->PSSetShaderResources(0, 1, &pOldState->m_psShaderResource);
+    m_pActiveContext->PSSetSamplers(0, 1, &pOldState->m_psSampler);
+    m_pActiveContext->PSSetShader(pOldState->m_ps,
+                                  pOldState->m_psInstances,
+                                  pOldState->m_psInstancesCount);
+
+    m_pActiveContext->VSSetShader(pOldState->m_vs,
+                                  pOldState->m_vsInstances,
+                                  pOldState->m_vsInstancesCount);
+    m_pActiveContext->VSSetConstantBuffers(0, 1, &pOldState->m_vsConstantBuffer);
+    m_pActiveContext->GSSetShader(pOldState->m_gs,
+                                  pOldState->m_gsInstances,
+                                  pOldState->m_gsInstancesCount);
+    
+    m_pActiveContext->IASetPrimitiveTopology(pOldState->m_primitiveTopology);
+    m_pActiveContext->IASetIndexBuffer(pOldState->m_indexBuffer,
+                                       pOldState->m_indexBufferFormat,
+                                       pOldState->m_indexBufferOffset);
+    m_pActiveContext->IASetVertexBuffers(0,
+                                         1,
+                                         &pOldState->m_vertexBuffer,
+                                         &pOldState->m_vertexBufferStride,
+                                         &pOldState->m_vertexBufferOffset);
+    m_pActiveContext->IASetInputLayout(pOldState->m_inputLayout);
   }
 
   void

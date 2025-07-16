@@ -23,6 +23,10 @@
 
 namespace geEngineSDK {
 
+  /**
+   * @brief Represents a vertex buffer in DirectX 11.
+   *        This class manages the vertex buffer used for rendering geometry.
+   */
   class DXVertexBuffer : public VertexBuffer
   {
    public:
@@ -82,6 +86,68 @@ namespace geEngineSDK {
     D3D11_BUFFER_DESC m_Desc{};
   };
 
+  /**
+   * @brief Represents a stream output buffer in DirectX 11.
+   *        This class manages the buffer used for stream output operations.
+   */
+  class DXStreamOutputBuffer : public StreamOutputBuffer
+  {
+   public:
+    DXStreamOutputBuffer() = default;
+    virtual ~DXStreamOutputBuffer();
+
+    /**
+     * @brief Releases resources held by the object.
+     */
+    void
+    release() override;
+
+    bool
+    load(const Path& filePath) override {
+      GE_UNREFERENCED_PARAMETER(filePath);
+      return false; // Stream output buffers are usually created in code, not loaded from files
+    }
+
+    void
+    unload() override
+    {}
+
+    bool
+    isLoaded() const override {
+      return m_pBuffer != nullptr;
+    }
+
+    const String&
+    getName() const override {
+      static String emptyName;
+      return emptyName;
+    }
+
+    SIZE_T
+    getMemoryUsage() const override {
+      return m_Desc.ByteWidth; // Memory usage is the size of the buffer
+    }
+
+    void*
+    _getGraphicsResource() const override {
+      return m_pBuffer;
+    }
+
+    void*
+    _getGraphicsBuffer() const override {
+      return m_pBuffer;
+    }
+
+   protected:
+    friend class DX11RenderAPI;
+    ID3D11Buffer* m_pBuffer = nullptr;
+    D3D11_BUFFER_DESC m_Desc{};
+  };
+
+  /**
+   * @brief Represents an index buffer in DirectX 11.
+   *        This class manages the index buffer used for rendering indexed geometry.
+   */
   class DXIndexBuffer : public IndexBuffer
   {
    public:
@@ -142,6 +208,10 @@ namespace geEngineSDK {
     D3D11_BUFFER_DESC m_Desc{};
   };
 
+  /**
+   * @brief Represents a constant buffer in DirectX 11.
+   *        This class manages the constant buffer used for passing data to shaders.
+   */
   class DXConstantBuffer : public ConstantBuffer
   {
   public:

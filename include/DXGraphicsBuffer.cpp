@@ -48,4 +48,13 @@ namespace geEngineSDK {
       safeRelease(m_pBuffer);
     }
 
+    DXStreamOutputBuffer::~DXStreamOutputBuffer() {
+      release();
+    }
+
+    void
+    DXStreamOutputBuffer::release() {
+      safeRelease(m_pBuffer);
+    }
+
 }
