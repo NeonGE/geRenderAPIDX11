@@ -1477,7 +1477,7 @@ namespace geEngineSDK {
   DX11RenderAPI::setRasterizerState(const WeakSPtr<RasterizerState>& pRasterizerState) {
     GE_ASSERT(m_pActiveContext);
 
-    ID3D11RasterizerState1* pRS = nullptr;
+    D3DRasterizerState* pRS = nullptr;
     if (!pRasterizerState.expired()) {
       auto pRSState = reinterpret_cast<DXRasterizerState*>(pRasterizerState.lock().get());
       pRS = pRSState->m_pRasterizerState;
@@ -1538,7 +1538,7 @@ namespace geEngineSDK {
   }
 
   void
-    DX11RenderAPI::setIndexBuffer(const WeakSPtr<IndexBuffer>& pIndexBuffer,
+  DX11RenderAPI::setIndexBuffer(const WeakSPtr<IndexBuffer>& pIndexBuffer,
                                   uint32 offset) {
     GE_ASSERT(m_pActiveContext);
 
@@ -1805,7 +1805,7 @@ namespace geEngineSDK {
       auto pObj = target.pRenderTarget.lock();
       auto pDXObj = reinterpret_cast<DXTexture*>(pObj.get());
 
-      GE_ASSERT(pDXObj->m_ppRTV.size() > target.mipLevel);
+      GE_ASSERT(pDXObj->m_ppRTV.size() > SIZE_T(target.mipLevel));
       ID3D11RenderTargetView* pRTV = pDXObj->m_ppRTV[target.mipLevel];
       pRTVs[i] = pRTV;
     }
@@ -1892,6 +1892,64 @@ namespace geEngineSDK {
   WeakSPtr<Texture>
   DX11RenderAPI::getBackBuffer() const {
     return m_pBackBufferTexture;
+  }
+
+  WeakSPtr<RasterizerState>
+  DX11RenderAPI::getCurrentRasterizerState() const {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11RasterizerState* pDXRS = nullptr;
+    auto pRS = ge_shared_ptr_new<DXRasterizerState>();
+    m_pActiveContext->RSGetState(&pDXRS);
+    pRS->m_pRasterizerState = getAs<D3DRasterizerState>(pDXRS);
+    safeRelease(pDXRS);
+
+    return pRS;
+  }
+
+  WeakSPtr<DepthStencilState>
+  DX11RenderAPI::getCurrentDepthStencilState() const {
+    GE_ASSERT(m_pActiveContext);
+    
+    ID3D11DepthStencilState* pDXDSS = nullptr;
+    uint32 stencilRef = 0;
+
+    auto pDSS = ge_shared_ptr_new<DXDepthStencilState>();
+    m_pActiveContext->OMGetDepthStencilState(&pDXDSS, &stencilRef);
+    pDSS->m_pDepthStencilState = pDXDSS;
+    safeRelease(pDXDSS);
+
+    return pDSS;
+  }
+
+  WeakSPtr<BlendState>
+  DX11RenderAPI::getCurrentBlendState() const {
+    GE_ASSERT(m_pActiveContext);
+    
+    ID3D11BlendState* pDXBS = nullptr;
+    Vector4 blendFactors(geEngineSDK::FORCE_INIT::kForceInitToZero);
+    uint32 sampleMask = 0xffffffff;
+    
+    auto pBS = ge_shared_ptr_new<DXBlendState>();
+    m_pActiveContext->OMGetBlendState(&pDXBS, &blendFactors[0], &sampleMask);
+    pBS->m_pBlendState = getAs<D3DBlendState>(pDXBS);
+    pBS->m_blendFactors = blendFactors;
+    pBS->m_sampleMask = sampleMask;
+    safeRelease(pDXBS);
+
+    return pBS;
+  }
+
+  WeakSPtr<SamplerState>
+  DX11RenderAPI::getCurrentSamplerState(uint32 samplerSlot) const {
+    GE_ASSERT(m_pActiveContext);
+
+    ID3D11SamplerState* pDXSS = nullptr;
+    auto pSS = ge_shared_ptr_new<DXSamplerState>();
+    m_pActiveContext->PSGetSamplers(samplerSlot, 1, &pDXSS);
+    pSS->m_pSampler = pDXSS;
+
+    return pSS;
   }
 
 }

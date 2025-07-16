@@ -115,13 +115,4 @@ namespace geEngineSDK {
     return ret;
   }
 
-  template<typename T>
-  void
-  safeRelease(T*& ptr) {
-    if (ptr) {
-      ptr->Release();
-      ptr = nullptr;
-    }
-  }
-
 }

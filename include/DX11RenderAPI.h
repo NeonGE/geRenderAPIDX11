@@ -58,6 +58,18 @@ namespace geEngineSDK {
     WeakSPtr<Texture>
     getBackBuffer() const override;
 
+    WeakSPtr<RasterizerState>
+    getCurrentRasterizerState() const override;
+
+    WeakSPtr<DepthStencilState>
+    getCurrentDepthStencilState() const override;
+
+    WeakSPtr<BlendState>
+    getCurrentBlendState() const override;
+
+    WeakSPtr<SamplerState>
+    getCurrentSamplerState(uint32 samplerSlot = 0) const override;
+
     /*************************************************************************/
     // Create methods
     /*************************************************************************/
@@ -79,10 +91,10 @@ namespace geEngineSDK {
 
     SPtr<InputLayout>
     createInputLayout(const WeakSPtr<VertexDeclaration>& descArray,
-                      const WeakSPtr<VertexShader>& pVS);
+                      const WeakSPtr<VertexShader>& pVS) override;
 
     SPtr<InputLayout>
-    createInputLayoutFromShader(const WeakSPtr<VertexShader>& pVS);
+    createInputLayoutFromShader(const WeakSPtr<VertexShader>& pVS) override;
 
     /*************************************************************************/
     // Create Buffers
@@ -321,49 +333,49 @@ namespace geEngineSDK {
 
    public:
     void
-    vsSetProgram(const WeakSPtr<VertexShader>& pInShader);
+    vsSetProgram(const WeakSPtr<VertexShader>& pInShader) override;
     
     void
-    psSetProgram(const WeakSPtr<PixelShader>& pInShader);
+    psSetProgram(const WeakSPtr<PixelShader>& pInShader) override;
     
     void
-    gsSetProgram(const WeakSPtr<GeometryShader>& pInShader);
+    gsSetProgram(const WeakSPtr<GeometryShader>& pInShader) override;
     
     void
-    hsSetProgram(const WeakSPtr<HullShader>& pInShader);
+    hsSetProgram(const WeakSPtr<HullShader>& pInShader) override;
     
     void
-    dsSetProgram(const WeakSPtr<DomainShader>& pInShader);
+    dsSetProgram(const WeakSPtr<DomainShader>& pInShader) override;
     
     void
-    csSetProgram(const WeakSPtr<ComputeShader>& pInShader);
+    csSetProgram(const WeakSPtr<ComputeShader>& pInShader) override;
 
     /*************************************************************************/
     // Set Shaders Resources
     /*************************************************************************/
     void
     vsSetShaderResource(const WeakSPtr<Texture>& pTexture,
-                        const uint32 startSlot = 0);
+                        const uint32 startSlot = 0) override;
 
     void
     psSetShaderResource(const WeakSPtr<Texture>& pTexture,
-                        const uint32 startSlot = 0);
+                        const uint32 startSlot = 0) override;
 
     void
     gsSetShaderResource(const WeakSPtr<Texture>& pTexture,
-                        const uint32 startSlot = 0);
+                        const uint32 startSlot = 0) override;
 
     void
     hsSetShaderResource(const WeakSPtr<Texture>& pTexture,
-                        const uint32 startSlot = 0);
+                        const uint32 startSlot = 0) override;
 
     void
     dsSetShaderResource(const WeakSPtr<Texture>& pTexture,
-                        const uint32 startSlot = 0);
+                        const uint32 startSlot = 0) override;
 
     void
     csSetShaderResource(const WeakSPtr<Texture>& pTexture,
-                        const uint32 startSlot = 0);
+                        const uint32 startSlot = 0) override;
 
     /*************************************************************************/
     // Set Unordered Access Views

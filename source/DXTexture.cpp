@@ -64,6 +64,10 @@ namespace geEngineSDK {
   DXTexture::setDebugName(const String& name) {
 #if USING(GE_DEBUG_MODE)
     m_debugName = name;
+    if (m_pTexture) {
+      m_pTexture->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(name.size()),
+                                 name.c_str());
+    }
 #endif
     return;
   }

@@ -749,6 +749,7 @@ namespace geEngineSDK {
       case DXGI_FORMAT_B5G5R5A1_UNORM:
       case DXGI_FORMAT_A8P8:
       case DXGI_FORMAT_B4G4R4A4_UNORM:
+      case DXGI_FORMAT_A4B4G4R4_UNORM:
       case DXGI_FORMAT_P208:
       case DXGI_FORMAT_V208:
       case DXGI_FORMAT_V408:
@@ -847,6 +848,8 @@ namespace geEngineSDK {
         return DXGI_FORMAT_R32G32B32A32_SINT;
       case VERTEX_ELEMENT_TYPE::UBYTE4:
         return DXGI_FORMAT_R8G8B8A8_UINT;
+      default:
+        break;
       }
 
       // Unsupported type
