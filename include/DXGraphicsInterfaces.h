@@ -20,6 +20,7 @@
 #include "gePrerequisitesRenderAPIDX11.h"
 #include <geGraphicsInterfaces.h>
 #include <geVector4.h>
+#include <geNumericLimits.h>
 
 namespace geEngineSDK
 {
@@ -141,9 +142,14 @@ namespace geEngineSDK
   class DXPipelineState : public PipelineState
   {
    public:
-    DXPipelineState() {
-      memset(this, 0, sizeof(DXPipelineState));
-    }
+     DXPipelineState() {
+       memset(&m_scissorRects, 0, sizeof(m_scissorRects));
+       memset(&m_viewports, 0, sizeof(m_viewports));
+       memset(&m_blendFactor, 0, sizeof(m_blendFactor));
+       memset(&m_psInstances, 0, sizeof(m_psInstances));
+       memset(&m_vsInstances, 0, sizeof(m_vsInstances));
+       memset(&m_gsInstances, 0, sizeof(m_gsInstances));
+     }
 
     virtual ~DXPipelineState() {
       release();
@@ -182,39 +188,39 @@ namespace geEngineSDK
    protected:
     friend class DX11RenderAPI;
 
-    uint32 m_scissorRectsCount;
-    uint32 m_viewportsCount;
+    uint32 m_scissorRectsCount = 0;
+    uint32 m_viewportsCount = 0;
     D3D11_RECT m_scissorRects[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
     D3D11_VIEWPORT m_viewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
-    ID3D11RasterizerState* m_rasterState;
-    ID3D11BlendState* m_blendState;
+    ID3D11RasterizerState* m_rasterState = nullptr;
+    ID3D11BlendState* m_blendState = nullptr;
     float m_blendFactor[4];
-    uint32 m_sampleMask;
-    uint32 m_stencilRef;
-    ID3D11DepthStencilState* m_depthStencilState;
-    ID3D11ShaderResourceView* m_psShaderResource;
-    ID3D11SamplerState* m_psSampler;
-    ID3D11PixelShader* m_ps;
-    ID3D11VertexShader* m_vs;
-    ID3D11GeometryShader* m_gs;
-    uint32 m_psInstancesCount;
-    uint32 m_vsInstancesCount;
-    uint32 m_gsInstancesCount;
+    uint32 m_sampleMask = NumLimit::MAX_UINT32;
+    uint32 m_stencilRef = 0;
+    ID3D11DepthStencilState* m_depthStencilState = nullptr;
+    ID3D11ShaderResourceView* m_psShaderResource = nullptr;
+    ID3D11SamplerState* m_psSampler = nullptr;
+    ID3D11PixelShader* m_ps = nullptr;
+    ID3D11VertexShader* m_vs = nullptr;
+    ID3D11GeometryShader* m_gs = nullptr;
+    uint32 m_psInstancesCount = 0;
+    uint32 m_vsInstancesCount = 0;
+    uint32 m_gsInstancesCount = 0;
 
     //256 is max according to PSSetShader documentation
     ID3D11ClassInstance* m_psInstances[256];
     ID3D11ClassInstance* m_vsInstances[256];
     ID3D11ClassInstance* m_gsInstances[256];
 
-    D3D11_PRIMITIVE_TOPOLOGY m_primitiveTopology;
-    ID3D11Buffer* m_indexBuffer;
-    ID3D11Buffer* m_vertexBuffer;
-    ID3D11Buffer* m_vsConstantBuffer;
-    uint32 m_indexBufferOffset;
-    uint32 m_vertexBufferStride;
-    uint32 m_vertexBufferOffset;
-    DXGI_FORMAT m_indexBufferFormat;
-    ID3D11InputLayout* m_inputLayout;
+    D3D11_PRIMITIVE_TOPOLOGY m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    ID3D11Buffer* m_indexBuffer = nullptr;
+    ID3D11Buffer* m_vertexBuffer = nullptr;
+    ID3D11Buffer* m_vsConstantBuffer = nullptr;
+    uint32 m_indexBufferOffset = 0;
+    uint32 m_vertexBufferStride = 0;
+    uint32 m_vertexBufferOffset = 0;
+    DXGI_FORMAT m_indexBufferFormat = DXGI_FORMAT_UNKNOWN;
+    ID3D11InputLayout* m_inputLayout = nullptr;
   };
 
 } // namespace geEngineSDK

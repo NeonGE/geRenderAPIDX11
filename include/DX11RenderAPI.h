@@ -488,6 +488,9 @@ namespace geEngineSDK {
                   uint32 startInstanceLocation = 0) override;
 
     void
+    drawAuto() override;
+
+    void
     dispatch(uint32 threadGroupCountX,
              uint32 threadGroupCountY = 1,
              uint32 threadGroupCountZ = 1) override;

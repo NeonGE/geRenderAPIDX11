@@ -2052,6 +2052,12 @@ namespace geEngineSDK {
   }
 
   void
+  DX11RenderAPI::drawAuto() {
+    GE_ASSERT(m_pActiveContext);
+    m_pActiveContext->DrawAuto();
+  }
+
+  void
   DX11RenderAPI::dispatch(uint32 threadGroupCountX,
                           uint32 threadGroupCountY,
                           uint32 threadGroupCountZ) {
