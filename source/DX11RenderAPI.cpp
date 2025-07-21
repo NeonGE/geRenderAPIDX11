@@ -623,41 +623,42 @@ namespace geEngineSDK {
       for (uint32 i = 0; i < mipLevels; ++i) {
         uavDesc.Texture2D.MipSlice = i;
         throwIfFailed(m_pDevice->CreateUnorderedAccessView(pTexture->m_pTexture,
-          &uavDesc,
-          &pTexture->m_ppUAV[i]));
+                                                           &uavDesc,
+                                                           &pTexture->m_ppUAV[i]));
       }
     }
 
     if (bindFlags & D3D11_BIND_SHADER_RESOURCE) {
-      pTexture->m_ppSRV.resize(mipLevels);
+      pTexture->m_ppSRV.resize(1); //mipLevels
 
       D3D11_SHADER_RESOURCE_VIEW_DESC sDesc = CD3D11_SHADER_RESOURCE_VIEW_DESC();
       sDesc.Format = srv_format;
-      uint32* pMostDetailedMip = nullptr;
 
       if (isCubeMap) {
         if (arraySize > 1) {
           sDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBEARRAY;
           sDesc.TextureCubeArray.First2DArrayFace = 0;
           sDesc.TextureCubeArray.NumCubes = arraySize;
+          sDesc.TextureCubeArray.MostDetailedMip = 0;
           sDesc.TextureCubeArray.MipLevels = mipLevels;
-          pMostDetailedMip = &sDesc.TextureCubeArray.MostDetailedMip;
         }
         else {
           sDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
           sDesc.TextureCube.MipLevels = mipLevels;
-          pMostDetailedMip = &sDesc.TextureCube.MostDetailedMip;
+          sDesc.TextureCube.MostDetailedMip = 0;
+          sDesc.TextureCubeArray.MipLevels = mipLevels;
         }
       }
       else {
         sDesc.ViewDimension = (sampleCount > 1 || isMSAA) ?
           D3D11_SRV_DIMENSION_TEXTURE2DMS : D3D11_SRV_DIMENSION_TEXTURE2D;
+        sDesc.Texture2D.MostDetailedMip = 0;
         sDesc.Texture2D.MipLevels = mipLevels;
-        pMostDetailedMip = &sDesc.Texture2D.MostDetailedMip;
       }
 
-      for (uint32 i = 0; i < mipLevels; ++i) {
-        *pMostDetailedMip = i;
+      //for (uint32 i = 0; i < mipLevels; ++i)
+      uint32 i = 0;
+      {
         throwIfFailed(m_pDevice->CreateShaderResourceView(pTexture->m_pTexture,
                                                           &sDesc,
                                                           &pTexture->m_ppSRV[i]));
