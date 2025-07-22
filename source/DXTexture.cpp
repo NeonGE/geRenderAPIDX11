@@ -28,6 +28,45 @@ namespace geEngineSDK {
   }
 
   void
+  DXTexture::moveFrom(Resource& other) {
+    if (this != &other) {
+      release();
+
+      //Cast to DXTexture to access the specific members
+      DXTexture& dxOther = static_cast<DXTexture&>(other);
+      m_pTexture = dxOther.m_pTexture;
+      m_ppSRV = dxOther.m_ppSRV;
+      m_pDSV = dxOther.m_pDSV;
+      m_pRO_DSV = dxOther.m_pRO_DSV;
+      m_ppUAV = dxOther.m_ppUAV;
+      m_ppRTV = dxOther.m_ppRTV;
+
+      m_bHaveAlpha = dxOther.m_bHaveAlpha;
+      m_bIsCubeMap = dxOther.m_bIsCubeMap;
+
+      m_desc = dxOther.m_desc;
+      setPath(dxOther.getPath());
+      setCookedPath(dxOther.getCookedPath());
+
+      // Add reference to the resources
+      if (m_pTexture) { m_pTexture->AddRef(); }
+      if (m_pDSV) { m_pDSV->AddRef(); }
+      if (m_pRO_DSV) { m_pRO_DSV->AddRef(); }
+
+      for (auto& pSRV : m_ppSRV) {
+        if (pSRV) { pSRV->AddRef(); }
+      }
+
+      for (auto& pUAV : m_ppUAV) {
+        if (pUAV) { pUAV->AddRef(); }
+      }
+      for (auto& pRTV : m_ppRTV) {
+        if (pRTV) { pRTV->AddRef(); }
+      }
+    }
+  }
+
+  void
   DXTexture::release() {
     safeRelease(m_pTexture);
     safeRelease(m_pDSV);

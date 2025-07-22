@@ -29,6 +29,9 @@ namespace geEngineSDK {
     virtual ~DXTexture();
 
     void
+    moveFrom(Resource& other) override;
+
+    void
     release() override;
 
     Vector3

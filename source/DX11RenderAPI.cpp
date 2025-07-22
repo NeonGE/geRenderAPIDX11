@@ -1382,12 +1382,11 @@ namespace geEngineSDK {
     GE_ASSERT(pGraphRes);
 
     ge_zero_out(mappedSubresource);
-    m_pActiveContext->Map(pGraphRes,
+    HRESULT hr = m_pActiveContext->Map(pGraphRes,
                           subResource,
                           D3D11_MAP_READ,
                           mapFlags,
                           reinterpret_cast<D3D11_MAPPED_SUBRESOURCE*>(&mappedSubresource));
-
     if (mappedSubresource.pData == nullptr) {
       GE_LOG(kError, RenderAPI, "Failed to map texture.");
     }
